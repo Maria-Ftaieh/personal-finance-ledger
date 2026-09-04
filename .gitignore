@@ -5,6 +5,8 @@ data/
 *.csv
 !ledger-import/src/test/resources/fixtures/**/*.pdf
 !ledger-import/src/test/resources/fixtures/**/*.csv
+# The offline CPI seed is public statistics, not financial data (SPEC 6.3).
+!ledger-app/src/main/resources/db/seed/*.csv
 
 # --- Build ------------------------------------------------------------------
 target/

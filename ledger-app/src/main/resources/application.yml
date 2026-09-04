@@ -33,6 +33,19 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+ledger:
+  evds:
+    # SPEC §6.1: verified against the live service on 2026-09-04. The pre-2026 address
+    # evds2.tcmb.gov.tr/service/evds/ answers 302 to a single-page app and is gone.
+    base-url: https://evds3.tcmb.gov.tr/igmevdsms-dis/fe
+    # CPI general index, 2003=100. Not TP.FG.J0, which returns the identical figures but
+    # stopped at 2026-01; see V5__Seed_cpi_history for the comparison.
+    series-code: TP.GENENDEKS.T1
+    # Header, never a query parameter. Absent is fine: the application runs on seeded data.
+    api-key: ${EVDS_API_KEY:}
+    enabled: true
+    timeout: 30s
+
 server:
   error:
     include-message: always

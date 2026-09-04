@@ -1,11 +1,10 @@
 package dev.ledger.app;
 
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Base for tests that need the real database.
@@ -16,20 +15,37 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * lives: the partial index, the check constraints, {@code numeric(19,4)}, {@code
  * gen_random_uuid()}.
  *
- * <p>The container is {@code static}, so one instance is shared by every test in the suite and
- * Spring's context cache keeps the application context alive alongside it.
+ * <p><b>One container for the whole suite</b>, as §7.2 asks. It is started once in a static
+ * initialiser and deliberately never stopped; Testcontainers' reaper removes it when the JVM exits.
+ * The obvious-looking alternative — {@code @Testcontainers} with a {@code @Container} static field
+ * on this class — is wrong here, and fails in a way that is easy to misread. That annotation stops
+ * the container after <em>each</em> subclass, while Spring's context cache keeps the application
+ * context and its connection pool alive across classes; the second test class then inherits a pool
+ * pointing at a container that no longer exists, and every test in it dies with "Could not open JPA
+ * EntityManager" after a long timeout.
  *
- * <p>Subclasses are skipped, not failed, on a machine with no Docker daemon; CI runs on a runner
- * that has one, and its workflow checks for it before the build so a silent skip is not possible
- * there.
+ * <p>Subclasses are skipped, not failed, on a machine with no Docker daemon. CI runs on a runner
+ * that has one and checks for it before the build, so a silent skip is not possible there.
  */
 @SpringBootTest
-@Testcontainers
 @RequiresDocker
 public abstract class PostgresIntegrationTest {
 
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+  private static final PostgreSQLContainer<?> POSTGRES =
+      new PostgreSQLContainer<>("postgres:17-alpine");
+
+  static {
+    if (dockerIsAvailable()) {
+      POSTGRES.start();
+    }
+  }
+
+  @DynamicPropertySource
+  static void datasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+    registry.add("spring.datasource.username", POSTGRES::getUsername);
+    registry.add("spring.datasource.password", POSTGRES::getPassword);
+  }
 
   public static boolean dockerIsAvailable() {
     try {

@@ -9,12 +9,14 @@ import dev.ledger.core.model.ImportResult;
 import dev.ledger.core.model.ParsedStatement;
 import dev.ledger.core.model.Transaction;
 import dev.ledger.imports.StatementImportService;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,17 +34,20 @@ public class StatementImportAppService {
   private final TransactionRepository transactions;
   private final CategorisationService categorisation;
   private final DuplicateService duplicates;
+  private final BudgetService budgets;
 
   public StatementImportAppService(
       StatementRepository statements,
       TransactionRepository transactions,
       CategorisationService categorisation,
-      DuplicateService duplicates) {
+      DuplicateService duplicates,
+      BudgetService budgets) {
     this.parser = new StatementImportService();
     this.statements = statements;
     this.transactions = transactions;
     this.categorisation = categorisation;
     this.duplicates = duplicates;
+    this.budgets = budgets;
   }
 
   /**
@@ -96,6 +101,14 @@ public class StatementImportAppService {
     transactions.saveAll(rows);
 
     int flagged = duplicates.flagAgainstOverlapping(statement, rows);
+
+    // SPEC §6.5: budgets are evaluated on write. Only the months this file actually touched
+    // are re-checked; the rest cannot have changed.
+    budgets.evaluate(
+        rows.stream()
+            .map(row -> YearMonth.from(row.getTransactionDate()))
+            .collect(Collectors.toSet()));
+
     return ImportOutcome.imported(statement.getId(), rows.size(), flagged);
   }
 

@@ -12,7 +12,9 @@ services:
       POSTGRES_USER: ledger
       POSTGRES_PASSWORD: ledger
     ports:
-      - "5432:5432"
+      # Host ports are overridable so the stack can come up on a machine that already
+      # has something on 5432 or 8080: LEDGER_DB_PORT=5433 LEDGER_PORT=8090 docker compose up
+      - "${LEDGER_DB_PORT:-5432}:5432"
     volumes:
       - ledger-db:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +37,7 @@ services:
       # Optional: without it the app still starts and reports nominal figures only (SPEC §6.1).
       EVDS_API_KEY: ${EVDS_API_KEY:-}
     ports:
-      - "8080:8080"
+      - "${LEDGER_PORT:-8080}:8080"
 
 volumes:
   ledger-db:

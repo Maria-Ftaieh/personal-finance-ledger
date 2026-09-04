@@ -9,11 +9,15 @@ import dev.ledger.app.repo.SubcategoryRepository;
 import dev.ledger.app.repo.TransactionRepository;
 import dev.ledger.core.rules.CategorisationRule;
 import dev.ledger.core.rules.RuleEngine;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,16 +39,19 @@ public class CategorisationService {
   private final TransactionRepository transactions;
   private final CategoryRepository categories;
   private final SubcategoryRepository subcategories;
+  private final ObjectProvider<BudgetService> budgets;
 
   public CategorisationService(
       RuleRepository rules,
       TransactionRepository transactions,
       CategoryRepository categories,
-      SubcategoryRepository subcategories) {
+      SubcategoryRepository subcategories,
+      ObjectProvider<BudgetService> budgets) {
     this.rules = rules;
     this.transactions = transactions;
     this.categories = categories;
     this.subcategories = subcategories;
+    this.budgets = budgets;
   }
 
   /**
@@ -147,6 +154,16 @@ public class CategorisationService {
     List<TransactionEntity> all = transactions.findByUserId(CurrentUser.ID);
     int changed = apply(engine(), all);
     transactions.saveAll(all);
+
+    // Moving transactions between categories changes what each one holds, so the budgets have
+    // to be re-checked (SPEC §6.5).
+    if (changed > 0) {
+      Set<YearMonth> touched =
+          all.stream()
+              .map(row -> YearMonth.from(row.getTransactionDate()))
+              .collect(Collectors.toSet());
+      budgets.getObject().evaluate(touched);
+    }
     return changed;
   }
 

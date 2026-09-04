@@ -10,7 +10,7 @@ Built against [SPEC.md](SPEC.md), one phase at a time.
 |---|---|---|
 | 1 | `ledger-core`, `ledger-import` | **done** |
 | 2 | `ledger-app` — Spring Boot, Postgres, Flyway | **done** |
-| 3 | Inflation adjustment and reports | not started |
+| 3 | Inflation adjustment and reports | **done** |
 | 4 | `ledger-web` | not started |
 
 ---
@@ -23,7 +23,8 @@ The whole thing, database included:
 docker compose up --build
 ```
 
-The API is then on `http://localhost:8080/api`.
+The API is then on `http://localhost:8080/api`. If those ports are taken,
+`LEDGER_PORT=8090 LEDGER_DB_PORT=5433 docker compose up --build`.
 
 To build and test, Java 21 or newer and Maven 3.9+:
 
@@ -121,6 +122,26 @@ outcomes need four different things from the user:
 422 UNSUPPORTED_BANK  offer the CSV path
 422 UNREADABLE        a scan, or not a statement at all
 ```
+
+---
+
+## Phase 3 — what is in it
+
+Real-terms reporting against the Turkish CPI, and budget alerts.
+
+| | |
+|---|---|
+| `GET /api/reports/monthly?month=&baseMonth=` | totals by category and subcategory, nominal and real |
+| `GET /api/reports/year-over-year?month=&baseMonth=` | the same month a year apart, in real terms |
+| `GET /api/reports/months` | months that actually hold transactions |
+| `GET /api/cpi` | the cached index, its range, and the default base month |
+| `POST /api/cpi/refresh` | extend the cache from TCMB |
+| `GET /api/budgets`, `PUT /{categoryId}`, `DELETE /{categoryId}` | monthly limits |
+| `GET /api/alerts?month=` | budgets that were exceeded |
+
+The application ships with 284 months of published CPI (2003-01 to 2026-08) seeded from
+`db/seed/cpi-tr-2003-base.csv`, so every real-terms figure works with no network and no
+API key. `POST /api/cpi/refresh` is the only thing that ever calls TCMB.
 
 ---
 
@@ -286,6 +307,96 @@ for the same amount will be flagged. That is the correct default — it is far m
 often one purchase seen twice than two identical ones — and it is why the outcome is
 a review queue rather than a merge. Rejecting a match is one call, and a rejected
 match is never raised again.
+
+### The index level, not the annual rate
+
+Deflating with the year-on-year inflation figure is the mistake this whole section exists
+to avoid, and it is easy to make because the annual rate is the number in the news. It
+answers a different question. Year-on-year inflation to January 2026 was 30.65%, so adding
+30.65% to a January 2024 amount gives ₺1,306.50 — but two years of compounding actually put
+it at ₺1,856.75, which is what the ratio of the two months' index <em>levels</em> gives. A
+single annual percentage cannot carry that, and no arrangement of it will.
+
+```
+real = nominal × (CPI_base / CPI_transactionMonth)
+```
+
+`PriceIndexTest` asserts both numbers side by side so the difference is not something you
+have to take on trust.
+
+### Verifying EVDS instead of trusting the documentation
+
+SPEC §6.1 says to curl the service before writing a line of client code, including not
+trusting the spec itself. That turned out to matter twice.
+
+**The endpoint.** `evds2.tcmb.gov.tr/service/evds/?key=…` answers `302` to
+`https://evds3.tcmb.gov.tr/`, and every path under that host — `/service/evds/`, `/api/`,
+anything — returns the same 1,355-byte SPA shell with `200 OK`. A client written from any
+pre-2026 snippet gets a successful response containing HTML and no data. The real service
+was found by reading the EVDS web application's own JavaScript bundle, which sets
+`axios.defaults.baseURL = "/igmevdsms-dis"` and calls `post("/fe", …)` for series data. So:
+
+```
+POST https://evds3.tcmb.gov.tr/igmevdsms-dis/fe
+{"type":"json","series":"TP.GENENDEKS.T1","startDate":"01-01-2026","endDate":"30-09-2026",
+ "frequency":"5","decimalSeperator":".", …}
+
+→ {"totalCount":8,"items":[{"Tarih":"01-2026","TP_GENENDEKS_T1":"3683.83"}, …]}
+```
+
+The series is named in the response by its own code with dots turned into underscores, and
+only published months come back — there is no null padding to the requested end date.
+
+**The series.** §6.2 names `TP.FG.J0`. Fetched on 2026-09-04 that code returns the CPI
+general index but stops at 2026-01, because TÜİK rebased and it is now an archive series.
+`TP.GENENDEKS.T1` carries the identical figures — all 277 overlapping months agree exactly —
+and continues to the latest release, seven months further on. It is configurable via
+`ledger.evds.series-code`; the spec's own instruction to verify rather than assume is what
+settled it.
+
+**TLS.** §6.1 warns that TCMB's configuration may be too old for the JDK's defaults and that
+an explicit `SSLContext` may be needed. Measured, the handshake negotiates TLSv1.2 with
+`TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` and the default `HttpClient` accepts it, so no
+custom context is configured — there is nothing to fix. Certificate validation is never
+disabled, and if that day comes the fix is an explicit context, not a trust-everything one.
+
+**The key.** The endpoint currently serves this series with no credential at all. `EVDS_API_KEY`
+is still sent, as a header and never as a query parameter, so a future requirement is a
+configuration change rather than a code change.
+
+### Offline first, because a report is not a network call
+
+Reports never touch EVDS. They read `cpi_observations`, which Flyway fills from a checked-in
+CSV of 284 published months. That is what makes the demo work on a train, the integration
+tests hermetic, and a TCMB outage a non-event. `POST /api/cpi/refresh` extends the cache and
+degrades to `reached: false` rather than an error status, because the application is still
+perfectly functional when TCMB is not.
+
+The refresh window starts at the latest month already cached rather than the one after it.
+Re-reading that one month is what makes a TÜİK revision visible: the stored value and its
+fetch timestamp are compared against a fresh reading, and a disagreement is logged as a
+revision rather than silently overwriting history.
+
+### The current month is nominal, and says so
+
+CPI is published in the first days of the following month, so the current month never has
+one. Nothing is extrapolated. `RealAmount` carries an `adjusted` flag, and a month with no
+published index comes back with `real` equal to `nominal` and `adjusted: false`, so the UI
+can label it instead of presenting an unadjusted number as though it were comparable.
+
+Every figure also carries its `baseMonth`. "₺6,200 in today's money" is meaningless without
+saying which month is today, so the base travels with the number rather than sitting in a
+field somewhere further up the response.
+
+### Budgets are measured in nominal money
+
+Alerts compare nominal spending against the limit, not real. A budget is a decision about
+the money that will actually leave the account this month, so deflating either side would
+answer a question nobody asked. Real terms are for comparing months to each other, which is
+what the reports do. Alerts are evaluated on write — after an import and after a bulk
+recategorisation, since both change what a category holds — and an alert clears when a
+category comes back under its limit, because one that outlives the overspend is worse than
+none.
 
 ### Enforcing the module boundary
 
