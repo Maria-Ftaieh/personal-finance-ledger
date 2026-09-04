@@ -1,0 +1,41 @@
+# SPEC §9: the whole thing with one command.
+#
+#   docker compose up --build
+#
+# then the API is on http://localhost:8080/api and Postgres on 5432.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ledger
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - ledger-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: ledger-app/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      LEDGER_DB_URL: jdbc:postgresql://db:5432/ledger
+      LEDGER_DB_USER: ledger
+      LEDGER_DB_PASSWORD: ledger
+      # Optional: without it the app still starts and reports nominal figures only (SPEC §6.1).
+      EVDS_API_KEY: ${EVDS_API_KEY:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  ledger-db:

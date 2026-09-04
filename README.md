@@ -9,7 +9,7 @@ Built against [SPEC.md](SPEC.md), one phase at a time.
 | Phase | Module | Status |
 |---|---|---|
 | 1 | `ledger-core`, `ledger-import` | **done** |
-| 2 | `ledger-app` — Spring Boot, Postgres, Flyway | not started |
+| 2 | `ledger-app` — Spring Boot, Postgres, Flyway | **done** |
 | 3 | Inflation adjustment and reports | not started |
 | 4 | `ledger-web` | not started |
 
@@ -17,14 +17,36 @@ Built against [SPEC.md](SPEC.md), one phase at a time.
 
 ## Running it
 
-Java 21 or newer and Maven 3.9+.
+The whole thing, database included:
+
+```bash
+docker compose up --build
+```
+
+The API is then on `http://localhost:8080/api`.
+
+To build and test, Java 21 or newer and Maven 3.9+:
 
 ```bash
 mvn verify
 ```
 
-`verify` runs the module boundary check, the unit and property tests, the
-`google-java-format` check and SpotBugs. `mvn spotless:apply` fixes formatting.
+`verify` runs the module boundary check, the unit, property and Testcontainers
+integration tests, the `google-java-format` check and SpotBugs.
+`mvn spotless:apply` fixes formatting.
+
+The PostgreSQL integration tests need a Docker daemon and **skip themselves**
+when there is none, so a green local build on a machine without Docker has not
+run them. CI checks for Docker before the build and fails if any test was
+skipped, so they cannot pass unnoticed there.
+
+To run the application against your own PostgreSQL instead of Compose:
+
+```bash
+LEDGER_DB_URL=jdbc:postgresql://localhost:5432/ledger \
+LEDGER_DB_USER=ledger LEDGER_DB_PASSWORD=ledger \
+mvn -pl ledger-app spring-boot:run
+```
 
 ### Regenerating the fixture corpus
 
@@ -64,6 +86,40 @@ switch (result) {
   case ImportResult.UnsupportedBank u -> offerCsvUpload(u.fileName());
   case ImportResult.Unreadable u      -> explain(u.reason());
 }
+```
+
+---
+
+## Phase 2 — what is in it
+
+**`ledger-app`** — Spring Boot, PostgreSQL, Flyway. Three migrations: the schema,
+the Turkish category taxonomy from §5.3, and a seeded rule set. `ddl-auto` is
+`validate` and nothing else, so a mapping that disagrees with the schema stops the
+application at startup rather than at the first query.
+
+| | |
+|---|---|
+| `POST /api/statements` | upload a PDF or CSV; optional `password` |
+| `GET /api/statements` | what has been imported |
+| `GET /api/transactions` | `from`, `to`, `categoryId`, `includeConfirmedDuplicates` |
+| `PUT /api/transactions/{id}/category` | assign a category by hand |
+| `DELETE /api/transactions/{id}/category` | drop the manual assignment |
+| `GET /api/duplicates` | the review queue |
+| `POST /api/duplicates/{id}/confirm` \| `/reject` | decide one |
+| `GET /api/rules`, `POST`, `PUT /{id}`, `DELETE /{id}` | rule management |
+| `GET /api/rules/preview` | how many rows a re-evaluation would move |
+| `POST /api/rules/reevaluate` | commit it |
+| `GET /api/categories` | the two-level taxonomy |
+
+An upload answers with a `status` rather than a bare error, because the four
+outcomes need four different things from the user:
+
+```
+201 IMPORTED          { statementId, transactionsImported, suspectedDuplicates }
+200 ALREADY_IMPORTED  the same bytes were uploaded before; nothing changed
+422 NEEDS_PASSWORD    prompt, retry with ?password=
+422 UNSUPPORTED_BANK  offer the CSV path
+422 UNREADABLE        a scan, or not a statement at all
 ```
 
 ---
@@ -167,11 +223,79 @@ differ in every way that matters: five columns against three, `dd.MM.yyyy` again
 refunds against a leading one. A `GenericCsvImporter` exists because some banks only
 export CSV, and because it gives users a path when their bank is unsupported.
 
+### The fingerprint, and why it is not the deduplication key
+
+§5.2 wants a unique constraint on a computed fingerprint so that re-uploading a
+file is a no-op. Taken naively that constraint is in direct conflict with §3.4: a
+fingerprint over `(date, amount, description)` collides for two coffees bought on
+the same morning, and the second insert — a real purchase — would be rejected.
+
+The two are reconciled by making the fingerprint identify **a row of a document**
+rather than a purchase. It is a hash of the statement's own content hash, the row's
+values, and an occurrence number counting identical rows within that file. The same
+bytes always produce the same fingerprints, so a re-upload is idempotent; two
+identical lines in one file get different ones, so both survive.
+
+Recognising the same purchase printed on two *different* documents is a separate
+problem with a separate answer. It is scored, it is reviewable, and it is
+deliberately not a database constraint — a unique index cannot express "probably the
+same thing, ask the user", and a finance tool needs to be able to say that.
+
+The statement's SHA-256 is checked before the parser runs, so an identical
+re-upload costs one indexed query rather than a full parse.
+
+### Categorising: first match wins, and the user always wins
+
+The engine is the one from `ledger-core` — the app layer only loads rules, hands
+them over, and writes the verdict back. Two rules in the schema make it behave the
+way §5.3 asks:
+
+Nothing reserves a priority band for seeded rules. A user rule can take priority 1
+and outrank all sixty-four of them, because overriding a bad guess is the thing
+users most want to do, and a partitioned priority space makes it impossible.
+
+A category the user sets by hand is stored as an override flag, not as a new rule.
+Inventing a rule from one correction would silently recategorise everything that
+happens to look similar. The flag means re-evaluation skips the row, which is what
+"a manual assignment must survive rule re-evaluation" actually requires.
+
+Bulk recategorisation is two calls, `preview` then `reevaluate`, because editing one
+rule can reshape a year of history and a number to look at first is the difference
+between a deliberate change and an accident.
+
+Anything no rule matches lands in the seeded `Diğer → Sınıflandırılmamış`, and card
+fees, interest and instalment restructuring are routed to `Finansal` by seeded rules
+so they never masquerade as spending (§4.3).
+
+### Testcontainers, not H2
+
+H2 would accept most of `V1__schema.sql` and quietly ignore the parts that matter:
+the partial index on the review queue, `numeric(19, 4)`, the check constraints that
+keep an instalment's two columns in step, `gen_random_uuid()` in the seed. The
+migrations *are* a large part of what Phase 2 is, so testing them against anything
+other than PostgreSQL would be testing a different application.
+
+One container is shared by the whole suite and Spring's context cache keeps the
+application context alive alongside it.
+
+### A known behaviour: deduplication crosses banks
+
+The pass compares any two statements whose periods overlap, including statements
+from different banks. An instalment charged to two different cards on the same day
+for the same amount will be flagged. That is the correct default — it is far more
+often one purchase seen twice than two identical ones — and it is why the outcome is
+a review queue rather than a merge. Rejecting a match is one call, and a rejected
+match is never raised again.
+
 ### Enforcing the module boundary
 
 `ledger-core` has no dependencies and `ledger-import` has one (PDFBox). Maven Enforcer
 bans Spring, Spring Data, JPA and Hibernate from both, transitively, and CI runs it on
-every push. The point of the boundary is that the domain logic is testable without a
-container — the 128 tests in `ledger-core` need no network, no database and no
-application context.
+every push. `ledger-app` replaces that rule set rather than adding to it — the one
+module Spring belongs in — which is what `combine.self="override"` in its POM does.
+
+The point of the boundary is that the domain logic is testable without a container:
+the 128 tests in `ledger-core` need no network, no database and no application
+context, and the money, locale, dedup and rule-engine logic they cover is the same
+code the web application runs.
 

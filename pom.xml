@@ -15,6 +15,7 @@
   <modules>
     <module>ledger-core</module>
     <module>ledger-import</module>
+    <module>ledger-app</module>
   </modules>
 
   <properties>
@@ -26,6 +27,8 @@
     <assertj.version>3.26.3</assertj.version>
     <jqwik.version>1.9.1</jqwik.version>
     <pdfbox.version>3.0.3</pdfbox.version>
+    <spring-boot.version>3.5.16</spring-boot.version>
+    <testcontainers.version>1.21.4</testcontainers.version>
 
     <compiler.plugin.version>3.13.0</compiler.plugin.version>
     <surefire.plugin.version>3.5.2</surefire.plugin.version>
@@ -83,6 +86,9 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${compiler.plugin.version}</version>
           <configuration>
+            <!-- Keeps parameter names in the bytecode. Spring binds request parameters and
+                 JPQL named parameters by name, and without this they are arg0, arg1, ... -->
+            <parameters>true</parameters>
             <compilerArgs>
               <arg>-Xlint:all,-serial,-processing</arg>
             </compilerArgs>

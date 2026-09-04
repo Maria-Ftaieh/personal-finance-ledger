@@ -18,11 +18,24 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # The PostgreSQL integration tests skip themselves when there is no Docker
+      # daemon, so this asserts the runner has one and a skip cannot pass unnoticed.
+      - name: Check Docker is available for Testcontainers
+        run: docker info > /dev/null
+
       # `verify` runs, in order: the module boundary check (Maven Enforcer fails the
-      # build if Spring or JPA reaches ledger-core or ledger-import), unit and
-      # property tests, the google-java-format check, and SpotBugs.
+      # build if Spring or JPA reaches ledger-core or ledger-import), unit, property
+      # and Testcontainers integration tests, the google-java-format check, and
+      # SpotBugs.
       - name: Build, test and analyse
         run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Fail if the integration tests were skipped
+        run: |
+          if grep -rl 'skipped="[1-9]' ledger-app/target/surefire-reports/*.xml 2>/dev/null; then
+            echo "Integration tests were skipped on a runner that has Docker." >&2
+            exit 1
+          fi
 
       - name: Publish test report
         if: always()
