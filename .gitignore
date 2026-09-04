@@ -1,0 +1,23 @@
+# --- Never commit real financial data (SPEC §0) -----------------------------
+*.pdf
+data/
+.env
+*.csv
+!ledger-import/src/test/resources/fixtures/**/*.pdf
+!ledger-import/src/test/resources/fixtures/**/*.csv
+
+# --- Build ------------------------------------------------------------------
+target/
+build/
+node_modules/
+dist/
+*.class
+
+# --- Tooling ----------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# jqwik failure database
+.jqwik-database

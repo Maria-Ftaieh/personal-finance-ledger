@@ -1,0 +1,17 @@
+#!/bin/sh
+# Reject staged PDFs outside the synthetic fixture corpus (SPEC §0).
+# Real statement PDFs must never reach the history.
+set -e
+
+offenders=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -i '\.pdf$' \
+  | grep -v '^ledger-import/src/test/resources/fixtures/' || true)
+
+if [ -n "$offenders" ]; then
+  echo "pre-commit: refusing to commit PDF files outside the fixture corpus:" >&2
+  echo "$offenders" | sed 's/^/  /' >&2
+  echo "" >&2
+  echo "Statement PDFs are financial data. Only synthetic fixtures under" >&2
+  echo "ledger-import/src/test/resources/fixtures/ may be committed." >&2
+  exit 1
+fi

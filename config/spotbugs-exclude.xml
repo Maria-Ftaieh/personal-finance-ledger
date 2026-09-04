@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Records expose their components by design; SpotBugs' mutable-store rules
+       fire on every record with a List or BigDecimal component even when the
+       component is already an immutable copy. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Class name="~.*Test(s)?$"/>
+  </Match>
+</FindBugsFilter>
