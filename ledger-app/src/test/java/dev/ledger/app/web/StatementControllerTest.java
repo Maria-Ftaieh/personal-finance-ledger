@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.ledger.app.config.DemoProperties;
 import dev.ledger.app.config.MoneyJsonModule;
 import dev.ledger.app.repo.StatementRepository;
 import dev.ledger.app.service.StatementImportAppService;
@@ -17,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
@@ -30,6 +32,9 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @WebMvcTest(StatementController.class)
 @Import(MoneyJsonModule.class)
+// DemoReadOnlyFilter is a servlet filter and so is part of this slice; it needs its
+// properties. Unset here, which means not a demo, which is what these assertions expect.
+@EnableConfigurationProperties(DemoProperties.class)
 class StatementControllerTest {
 
   @Autowired private MockMvc mockMvc;

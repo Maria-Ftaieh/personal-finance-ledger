@@ -131,6 +131,8 @@ export interface CpiRefresh {
 export type ImportStatus =
   | "IMPORTED"
   | "ALREADY_IMPORTED"
+  /** A read-only demo read the file and deliberately kept none of it. */
+  | "PARSED_NOT_STORED"
   | "NEEDS_PASSWORD"
   | "UNSUPPORTED_BANK"
   | "UNREADABLE";

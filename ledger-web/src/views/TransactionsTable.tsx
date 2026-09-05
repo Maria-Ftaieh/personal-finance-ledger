@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import type { Category, Transaction } from "../api";
 import { api } from "../api";
+import { READ_ONLY } from "../demo";
 import { bankLabel, formatDate, formatMoney } from "../format";
 import { categoryLabel, t } from "../i18n";
 import { Empty, ErrorState, Loading, MoneyText, Panel, Pill } from "../ui";
@@ -167,6 +168,8 @@ function Row({
           <select
             value={transaction.categoryId ?? ""}
             onChange={(event) => onAssign(event.target.value)}
+            disabled={READ_ONLY}
+            title={READ_ONLY ? t("demo.readOnly") : undefined}
             aria-label={t("common.category")}
           >
             {categories.map((category) => (
@@ -180,7 +183,8 @@ function Row({
               type="button"
               className="button button--quiet button--small"
               onClick={onClear}
-              title={t("transactions.override")}
+              disabled={READ_ONLY}
+              title={READ_ONLY ? t("demo.readOnly") : t("transactions.override")}
             >
               <RotateCcw size={13} aria-hidden />
             </button>

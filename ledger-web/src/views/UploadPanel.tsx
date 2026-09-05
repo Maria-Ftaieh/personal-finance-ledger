@@ -25,7 +25,7 @@ export function UploadPanel() {
     mutationFn: () => api.upload(file!, password || undefined),
     onSuccess: (result) => {
       setOutcome(result);
-      if (result.status === "IMPORTED") {
+      if (result.status === "IMPORTED" || result.status === "PARSED_NOT_STORED") {
         setFile(null);
         setPassword("");
         if (input.current) {
@@ -98,6 +98,12 @@ function Outcome({ outcome }: { outcome: ImportOutcome }) {
       );
     case "ALREADY_IMPORTED":
       return <Pill>{t("upload.already")}</Pill>;
+    case "PARSED_NOT_STORED":
+      return (
+        <Pill tone="accent">
+          {t("upload.notStored", { count: outcome.transactionsImported })}
+        </Pill>
+      );
     case "NEEDS_PASSWORD":
       return <Pill tone="caution">{t("upload.passwordNeeded")}</Pill>;
     case "UNSUPPORTED_BANK":

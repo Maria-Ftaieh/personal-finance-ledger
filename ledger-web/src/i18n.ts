@@ -20,6 +20,7 @@ const tr = {
 
   "demo.banner":
     "Bu bir tanıtım kopyasıdır. Görünen tüm işlemler kurgusaldır; gerçek finansal veri değildir.",
+  "demo.readOnly": "Tanıtım kopyası salt okunurdur; değişiklik yapılamaz.",
 
   "common.loading": "Yükleniyor",
   "common.error": "Bir şeyler ters gitti",
@@ -75,6 +76,8 @@ const tr = {
   "upload.already": "Bu dosya daha önce alınmış; hiçbir şey değişmedi",
   "upload.unsupported": "Bu bankanın ekstresi tanınmadı. CSV dışa aktarımı deneyebilirsiniz.",
   "upload.unreadable": "Dosya okunamadı: {detail}",
+  "upload.notStored":
+    "Dosyanızdan {count} işlem okundu. Hiçbiri kaydedilmedi — burası herkese açık bir tanıtım kopyası.",
 
   "duplicates.none": "İncelenecek kayıt yok",
   "duplicates.matches": "Eşleşme",
@@ -127,6 +130,7 @@ const en: Record<TranslationKey, string> = {
 
   "demo.banner":
     "This is a demonstration copy. Every transaction shown is fictional and is not real financial data.",
+  "demo.readOnly": "The demo is read only; nothing here can be changed.",
 
   "common.loading": "Loading",
   "common.error": "Something went wrong",
@@ -182,6 +186,8 @@ const en: Record<TranslationKey, string> = {
   "upload.already": "This file was already imported; nothing changed",
   "upload.unsupported": "No adapter recognised this bank. A CSV export will work.",
   "upload.unreadable": "The file could not be read: {detail}",
+  "upload.notStored":
+    "Read {count} transactions from your file. None of it was stored — this is a public demo.",
 
   "duplicates.none": "Nothing to review",
   "duplicates.matches": "Matches",

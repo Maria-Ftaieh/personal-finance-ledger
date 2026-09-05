@@ -3,6 +3,7 @@ import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Category, MatchType } from "../api";
 import { api, ApiFailure } from "../api";
+import { READ_ONLY } from "../demo";
 import { categoryLabel, t } from "../i18n";
 import { Empty, ErrorState, Loading, Panel, Pill } from "../ui";
 
@@ -85,6 +86,8 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
             type="button"
             className="button button--small button--primary"
             onClick={() => setAdding((open) => !open)}
+            disabled={READ_ONLY}
+            title={READ_ONLY ? t("demo.readOnly") : undefined}
           >
             <Plus size={13} aria-hidden /> {t("rules.add")}
           </button>
@@ -107,7 +110,8 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
           <button
             type="button"
             className="button button--small"
-            disabled={preview.data.wouldChange === 0 || apply.isPending}
+            disabled={READ_ONLY || preview.data.wouldChange === 0 || apply.isPending}
+            title={READ_ONLY ? t("demo.readOnly") : undefined}
             onClick={() => apply.mutate()}
           >
             {t("rules.apply")}
@@ -165,7 +169,7 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
           <button
             type="button"
             className="button button--primary"
-            disabled={!pattern.trim() || create.isPending}
+            disabled={READ_ONLY || !pattern.trim() || create.isPending}
             onClick={() => create.mutate()}
           >
             {t("common.save")}
@@ -215,6 +219,8 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
                         type="button"
                         className="button button--danger button--small"
                         onClick={() => remove.mutate(rule.id)}
+                        disabled={READ_ONLY}
+                        title={READ_ONLY ? t("demo.readOnly") : undefined}
                         aria-label={t("common.delete")}
                       >
                         <Trash2 size={13} aria-hidden />

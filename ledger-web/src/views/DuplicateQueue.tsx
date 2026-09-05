@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CopyCheck } from "lucide-react";
 import { api } from "../api";
+import { READ_ONLY } from "../demo";
 import { bankLabel, formatDate } from "../format";
 import { t } from "../i18n";
 import { Empty, ErrorState, Loading, MoneyText, Panel, Pill } from "../ui";
@@ -86,7 +87,8 @@ export function DuplicateQueue() {
                       <button
                         type="button"
                         className="button button--small"
-                        disabled={confirm.isPending}
+                        disabled={READ_ONLY || confirm.isPending}
+                        title={READ_ONLY ? t("demo.readOnly") : undefined}
                         onClick={() => confirm.mutate(transaction.id)}
                       >
                         {t("duplicates.confirm")}
@@ -94,7 +96,8 @@ export function DuplicateQueue() {
                       <button
                         type="button"
                         className="button button--quiet button--small"
-                        disabled={reject.isPending}
+                        disabled={READ_ONLY || reject.isPending}
+                        title={READ_ONLY ? t("demo.readOnly") : undefined}
                         onClick={() => reject.mutate(transaction.id)}
                       >
                         {t("duplicates.reject")}

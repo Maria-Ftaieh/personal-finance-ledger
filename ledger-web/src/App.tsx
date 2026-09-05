@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Info, LayoutGrid, Table2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { IS_DEMO } from "./demo";
 import { LOCALE, LOCALE_NAMES, LOCALES, setLocale, t } from "./i18n";
 import { Segmented } from "./ui";
 import { BasicView } from "./views/BasicView";
@@ -37,8 +38,6 @@ export default function App() {
   // application opens on something rather than on an empty current month.
   const months = useQuery({ queryKey: ["months"], queryFn: api.monthsWithSpending });
   const latestMonth = months.data?.[0];
-
-  const demo = import.meta.env.VITE_DEMO_MODE === "true";
 
   return (
     <div className="shell">
@@ -78,7 +77,7 @@ export default function App() {
       </header>
 
       {/* SPEC §8.3: say plainly, on screen, that the data is fictional. */}
-      {demo && (
+      {IS_DEMO && (
         <p className="banner" style={{ marginBottom: "var(--space-5)" }}>
           <Info size={16} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
           {t("demo.banner")}

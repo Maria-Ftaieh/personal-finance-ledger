@@ -34,6 +34,11 @@ spring:
       write-dates-as-timestamps: false
 
 ledger:
+  demo:
+    # A publicly reachable deployment refuses every write, and parses uploads without
+    # storing them. Off by default: a self-hosted instance is not a demo.
+    read-only: ${LEDGER_DEMO_READ_ONLY:false}
+
   evds:
     # SPEC §6.1: verified against the live service on 2026-09-04. The pre-2026 address
     # evds2.tcmb.gov.tr/service/evds/ answers 302 to a single-page app and is gone.

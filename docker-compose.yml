@@ -37,6 +37,9 @@ services:
       LEDGER_DB_URL: jdbc:postgresql://db:5432/ledger
       LEDGER_DB_USER: ledger
       LEDGER_DB_PASSWORD: ledger
+      # Set true when exposing this to the internet: refuses writes, and uploaded
+      # statements are parsed and discarded rather than stored.
+      LEDGER_DEMO_READ_ONLY: ${LEDGER_DEMO_READ_ONLY:-false}
       # Optional: without it the app still starts and reports nominal figures only (SPEC §6.1).
       EVDS_API_KEY: ${EVDS_API_KEY:-}
     ports:

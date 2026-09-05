@@ -40,9 +40,9 @@ public class StatementController {
    * <p>The password, when the PDF needs one, is a request parameter that is handed straight to the
    * parser and never stored or logged (SPEC §4.3).
    *
-   * <p>Everything except a successful import and an identical re-upload comes back as 422 with a
-   * {@code status} the client switches on — a password prompt, an offer to upload CSV instead, or
-   * an explanation that the file is a scan.
+   * <p>Everything except a successful import, an identical re-upload and a demo's parse-and-discard
+   * comes back as 422 with a {@code status} the client switches on — a password prompt, an offer to
+   * upload CSV instead, or an explanation that the file is a scan.
    */
   @PostMapping(consumes = "multipart/form-data")
   public ResponseEntity<ImportOutcome> upload(
@@ -55,7 +55,9 @@ public class StatementController {
     HttpStatus status =
         switch (outcome.status()) {
           case IMPORTED -> HttpStatus.CREATED;
-          case ALREADY_IMPORTED -> HttpStatus.OK;
+          // Both of these succeeded and changed nothing: the file was already here, or
+          // this is a read-only demo that read it and deliberately kept nothing.
+          case ALREADY_IMPORTED, PARSED_NOT_STORED -> HttpStatus.OK;
           case NEEDS_PASSWORD, UNSUPPORTED_BANK, UNREADABLE -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
     return ResponseEntity.status(status).body(outcome);

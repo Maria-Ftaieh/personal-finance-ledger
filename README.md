@@ -11,6 +11,8 @@ year, comparing this March with last March in lira tells you almost nothing. Spe
 inflation it is a 4% *cut*. That second number is the one worth knowing, and it is what
 this reports.
 
+**[Live demo →](https://demo2.mariaftaieh.com)** — running on generated data, and read only.
+
 Java 21, Spring Boot and PostgreSQL on the back; React and TypeScript on the front.
 [SPEC.md](SPEC.md) is the brief it was built against.
 
@@ -38,6 +40,13 @@ LEDGER_WEB_PORT=3001 LEDGER_PORT=8090 LEDGER_DB_PORT=5433 docker compose up --bu
 ```
 
 The demo generator seeds invented transactions and the interface says so on screen.
+
+If you put an instance on the public internet, turn on read-only mode — see
+[below](#a-public-demo-has-no-business-accepting-writes):
+
+```bash
+LEDGER_DEMO_READ_ONLY=true docker compose up --build
+```
 
 The interface is available in English and Turkish, switchable in the header. Compose
 builds it in English, since that suits a public demo; a self-hosted copy is more likely
@@ -425,6 +434,30 @@ Semantic colour needed more care than a rule about signs. The year-on-year headl
 negative number when spending has *fallen* in real terms, which is the good outcome, so it
 is green — while a refund, also negative, is red. Colour follows what a figure means, not
 whether it has a minus in front of it.
+
+### A public demo has no business accepting writes
+
+The application is single user and has no authentication. That is fine on a machine only
+its owner can reach and completely wrong on the open internet, where the deployed demo
+lives. Rather than bolt on half an authentication system, `LEDGER_DEMO_READ_ONLY=true`
+makes the deployment safe to expose: everything can be read, nothing can be changed.
+
+The reason is not tidiness. Somebody will eventually drop a **real bank statement** onto a
+public URL to see what happens. Without this, that file would be parsed and persisted into
+the one shared database — and then shown to every other visitor. That is a privacy leak,
+and it is a much worse outcome than a demo whose numbers drift.
+
+So uploads are handled specially. The parser still runs and still reports honestly what it
+found, because watching it read a statement is the most interesting thing anyone can do
+with the demo — and then the result is discarded. The response says `PARSED_NOT_STORED`
+and the interface says the same in words. Nothing reaches the database.
+
+Everything else is refused with a 403 at the edge, in one servlet filter over the HTTP
+method, rather than as a check inside each service. A rule that covers every endpoint
+including ones added later is worth more than a scattering of assertions somebody will
+forget to add: a new controller method would simply be unprotected, and nobody would find
+out until it was used. The browser also disables the controls it knows cannot work, but
+that is only an affordance — the server refuses regardless of what the client believes.
 
 ### The demo data has to make the argument
 

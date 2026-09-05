@@ -1,6 +1,7 @@
 package dev.ledger.app.service;
 
 import dev.ledger.app.config.CurrentUser;
+import dev.ledger.app.config.DemoProperties;
 import dev.ledger.app.domain.StatementEntity;
 import dev.ledger.app.domain.TransactionEntity;
 import dev.ledger.app.repo.StatementRepository;
@@ -35,19 +36,22 @@ public class StatementImportAppService {
   private final CategorisationService categorisation;
   private final DuplicateService duplicates;
   private final BudgetService budgets;
+  private final DemoProperties demo;
 
   public StatementImportAppService(
       StatementRepository statements,
       TransactionRepository transactions,
       CategorisationService categorisation,
       DuplicateService duplicates,
-      BudgetService budgets) {
+      BudgetService budgets,
+      DemoProperties demo) {
     this.parser = new StatementImportService();
     this.statements = statements;
     this.transactions = transactions;
     this.categorisation = categorisation;
     this.duplicates = duplicates;
     this.budgets = budgets;
+    this.demo = demo;
   }
 
   /**
@@ -59,14 +63,20 @@ public class StatementImportAppService {
     String hash = StatementImportService.sha256(content);
 
     // SPEC §5.2: an identical re-upload is settled by the hash, before the parser is invoked.
-    Optional<StatementEntity> already = statements.findByUserIdAndContentHash(CurrentUser.ID, hash);
+    Optional<StatementEntity> already =
+        demo.readOnly()
+            ? Optional.empty()
+            : statements.findByUserIdAndContentHash(CurrentUser.ID, hash);
     if (already.isPresent()) {
       return ImportOutcome.alreadyImported(already.get().getId());
     }
 
     ImportResult result = parser.importFile(content, fileName, password);
     return switch (result) {
-      case ImportResult.Parsed parsed -> store(parsed.statement(), fileName, hash);
+      case ImportResult.Parsed parsed ->
+          demo.readOnly()
+              ? ImportOutcome.parsedNotStored(parsed.statement().size())
+              : store(parsed.statement(), fileName, hash);
       case ImportResult.NeedsPassword ignored -> ImportOutcome.needsPassword();
       case ImportResult.UnsupportedBank unsupported ->
           ImportOutcome.unsupportedBank(unsupported.detail());
@@ -124,6 +134,15 @@ public class StatementImportAppService {
       IMPORTED,
       /** The same bytes were uploaded before. Nothing changed; this is not an error. */
       ALREADY_IMPORTED,
+      /**
+       * The file was read correctly and then deliberately discarded, because this deployment is a
+       * public demo.
+       *
+       * <p>Someone will upload a real statement to a public URL — so on a demo the parser runs,
+       * reports honestly what it found, and writes nothing. Their financial data never reaches the
+       * database, and the demo everyone else is looking at does not change underneath them.
+       */
+      PARSED_NOT_STORED,
       NEEDS_PASSWORD,
       UNSUPPORTED_BANK,
       UNREADABLE
@@ -131,6 +150,11 @@ public class StatementImportAppService {
 
     static ImportOutcome imported(UUID statementId, int imported, int flagged) {
       return new ImportOutcome(Status.IMPORTED, statementId, imported, flagged, null);
+    }
+
+    static ImportOutcome parsedNotStored(int parsed) {
+      return new ImportOutcome(
+          Status.PARSED_NOT_STORED, null, parsed, 0, "read but not stored: this is a public demo");
     }
 
     static ImportOutcome alreadyImported(UUID statementId) {
