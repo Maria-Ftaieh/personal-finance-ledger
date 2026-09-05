@@ -14,6 +14,11 @@ this reports.
 Java 21, Spring Boot and PostgreSQL on the back; React and TypeScript on the front.
 [SPEC.md](SPEC.md) is the brief it was built against.
 
+![The overview: this month in real terms, the year-on-year comparison, top categories and budget alerts](docs/basic-light.png)
+
+*Every figure in these screenshots is generated demo data, which is why the
+application says so across the top.*
+
 ---
 
 ## Quick start
@@ -108,12 +113,26 @@ different things from the user:
 Two views behind a single toggle in the header, which is the only navigation there is.
 
 **Basic** answers "how am I doing" without a click: this month in real terms, the same
-month last year, the top five categories, and any budget alert.
+month last year, the top five categories, and any budget alert. Note the year-on-year
+figure — spending fell 4% in real terms, so it reads green, even though it is a negative
+number.
+
+![The same overview in dark mode](docs/basic-dark.png)
 
 **Detailed** is the working surface: statement upload, a period selector, the category
 breakdown drilling down to subcategory, twelve months of real-terms trend, the
 transaction table with filters and manual categorisation, the duplicate review queue,
 and rule management.
+
+![Category breakdown with a category opened to its subcategories, and twelve months of real-terms trend](docs/detailed-light.png)
+
+The trend line is close to flat while the nominal amounts behind it rose by a quarter.
+That gap is the entire reason this exists.
+
+![The transaction table, with filters and inline category assignment](docs/transactions-dark.png)
+
+Light and dark both come from the same custom properties following
+`prefers-color-scheme`; there is no theme switch to forget to use.
 
 ---
 
@@ -467,3 +486,9 @@ and `.env`.
 If you ever do redact a real statement, verify it by extracting the text rather than
 looking at the rendered page. Black rectangles drawn over a PDF do not remove the text
 layer underneath them.
+
+---
+
+## Licence
+
+[MIT](LICENSE).
