@@ -1,0 +1,31 @@
+# The TLS terminator in front of the demo. Drop into /etc/caddy/Caddyfile.d/.
+#
+# The compose stack publishes every port on loopback, so this is the only way in.
+# Rate limiting, body caps and the security headers that matter live in the web
+# container's nginx config, so the demo is not relying on this file being right.
+
+demo2.mariaftaieh.com {
+	reverse_proxy 127.0.0.1:3000
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options    "nosniff"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		X-Frame-Options           "SAMEORIGIN"
+		-Server
+	}
+
+	# Statement uploads are multipart; nginx and the application both cap at 20MB.
+	request_body {
+		max_size 20MB
+	}
+
+	log {
+		output file /var/log/caddy/demo2.mariaftaieh.com.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

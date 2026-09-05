@@ -17,5 +17,6 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY ledger-web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY ledger-web/proxy-app.conf /etc/nginx/proxy-app.conf
 COPY --from=build /build/dist /usr/share/nginx/html
 EXPOSE 80

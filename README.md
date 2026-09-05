@@ -459,6 +459,20 @@ forget to add: a new controller method would simply be unprotected, and nobody w
 out until it was used. The browser also disables the controls it knows cannot work, but
 that is only an affordance — the server refuses regardless of what the client believes.
 
+Read-only is necessary and not sufficient, because the expensive part of an upload happens
+before anything would have been written. So the demo is also **rate limited per visitor**
+(120 requests a minute for the API, 6 for uploads, since uploading runs a PDF parser over
+bytes a stranger chose), runs in **containers with memory and CPU limits** so nothing can
+take the host down with it, **publishes every port on loopback** with a TLS terminator in
+front, and **returns no stack traces or exception messages** to anyone.
+
+And it **rebuilds itself nightly** — database dropped, migrations replayed from nothing,
+price index refreshed, data reseeded, read-only verified. Partly because the seeded data
+is generated relative to today, so a demo left alone slides into the past until the
+year-on-year comparison has no current month to compare; partly because a demo that
+rebuilds itself does not have to depend on read-only mode having worked. The whole
+configuration is in [`deploy/`](deploy/) rather than living only on the server.
+
 ### The demo data has to make the argument
 
 The generator runs for twenty-four months rather than twelve, because the headline feature

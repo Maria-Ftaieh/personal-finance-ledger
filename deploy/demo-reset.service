@@ -1,0 +1,10 @@
+[Unit]
+Description=Reset the personal-finance-ledger demo to a known-good state
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/ledger/deploy/demo-reset.sh /root/ledger
+# A reset that hangs must not hold the timer open forever.
+TimeoutStartSec=900

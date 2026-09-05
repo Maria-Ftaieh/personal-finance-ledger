@@ -52,8 +52,21 @@ ledger:
     timeout: 30s
 
 server:
+  # Never echo exception detail or stack traces to a caller: on a public deployment that
+  # is free reconnaissance, and the API's own handler already returns messages a client
+  # can act on.
   error:
-    include-message: always
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+  # Do not announce the server, and cap how long a slow client may hold a connection.
+  tomcat:
+    max-http-form-post-size: 20MB
+    connection-timeout: 10s
+    threads:
+      max: 50
+  shutdown: graceful
 
 logging:
   level:
