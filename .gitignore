@@ -23,3 +23,12 @@ dist/
 
 # jqwik failure database
 .jqwik-database
+
+# Frontend
+ledger-web/node_modules/
+ledger-web/dist/
+ledger-web/.env.local
+ledger-web/*.tsbuildinfo
+
+# Local editor/agent config
+.claude/

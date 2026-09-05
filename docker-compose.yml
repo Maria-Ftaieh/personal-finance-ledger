@@ -2,7 +2,10 @@
 #
 #   docker compose up --build
 #
-# then the API is on http://localhost:8080/api and Postgres on 5432.
+# then the application is on http://localhost:3000, the API on http://localhost:8080/api
+# and Postgres on 5432. Seed the demo with:
+#
+#   node ledger-web/scripts/generate-demo-data.mjs
 
 services:
   db:
@@ -38,6 +41,15 @@ services:
       EVDS_API_KEY: ${EVDS_API_KEY:-}
     ports:
       - "${LEDGER_PORT:-8080}:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: ledger-web/Dockerfile
+    depends_on:
+      - app
+    ports:
+      - "${LEDGER_WEB_PORT:-3000}:80"
 
 volumes:
   ledger-db:

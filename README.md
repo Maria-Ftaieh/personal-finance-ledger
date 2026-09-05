@@ -11,7 +11,7 @@ Built against [SPEC.md](SPEC.md), one phase at a time.
 | 1 | `ledger-core`, `ledger-import` | **done** |
 | 2 | `ledger-app` — Spring Boot, Postgres, Flyway | **done** |
 | 3 | Inflation adjustment and reports | **done** |
-| 4 | `ledger-web` | not started |
+| 4 | `ledger-web` | **done** |
 
 ---
 
@@ -21,10 +21,15 @@ The whole thing, database included:
 
 ```bash
 docker compose up --build
+node ledger-web/scripts/generate-demo-data.mjs   # optional: a demo year of data
 ```
 
-The API is then on `http://localhost:8080/api`. If those ports are taken,
-`LEDGER_PORT=8090 LEDGER_DB_PORT=5433 docker compose up --build`.
+The application is then on `http://localhost:3000` and the API on
+`http://localhost:8080/api`. If those ports are taken, every one of them is
+overridable: `LEDGER_WEB_PORT=3001 LEDGER_PORT=8090 LEDGER_DB_PORT=5433 docker compose up --build`.
+
+For frontend work, `npm install && npm run dev` in `ledger-web` starts Vite on
+port 5173 and proxies `/api` to a backend on 8080.
 
 To build and test, Java 21 or newer and Maven 3.9+:
 
@@ -142,6 +147,29 @@ Real-terms reporting against the Turkish CPI, and budget alerts.
 The application ships with 284 months of published CPI (2003-01 to 2026-08) seeded from
 `db/seed/cpi-tr-2003-base.csv`, so every real-terms figure works with no network and no
 API key. `POST /api/cpi/refresh` is the only thing that ever calls TCMB.
+
+---
+
+## Phase 4 — what is in it
+
+`ledger-web`: React, TypeScript and Vite, TanStack Query for server state, Recharts for
+the one chart, Lucide for icons. Two views behind a single toggle in the header, which is
+the only navigation there is.
+
+**Basic** answers "how am I doing" without a click: this month's total in real terms, the
+same month last year, the top five categories, and any budget alert.
+
+**Detailed** is the working surface: statement upload, a period selector, the category
+breakdown with drill-down to subcategory, twelve months of real-terms trend, the
+transaction table with filters and manual categorisation, the duplicate review queue, and
+rule management with the preview-then-apply flow.
+
+```bash
+cd ledger-web
+npm install
+npm run dev        # http://localhost:5173, /api proxied to :8080
+npm run typecheck && npm run lint && npm run build
+```
 
 ---
 
@@ -397,6 +425,44 @@ what the reports do. Alerts are evaluated on write — after an import and after
 recategorisation, since both change what a category holds — and an alert clears when a
 category comes back under its limit, because one that outlives the overspend is worse than
 none.
+
+### What the frontend is not allowed to do
+
+It never does arithmetic on money. Every total, every deflated figure and every difference
+arrives already computed in `BigDecimal` on the server, and `Money.amount` crosses the wire
+as a string precisely so that it never becomes a double on the way (§3.1). The one place a
+number is parsed is chart geometry, where the unit is a pixel — and that function says so.
+
+Formatting goes through `Intl.NumberFormat("tr-TR", …)`, which is handed the decimal string
+rather than a parsed number: `Intl` formats a string exactly, so the value does not pass
+through a float even to be displayed. Turkish strings live in a small typed dictionary
+whose keys are derived from the default locale, so a missing translation is a compile error
+rather than a blank label (§0).
+
+### Restraint is a design decision, not an absence of one
+
+§8.2 asks for an Apple-like interface, which means depth from soft shadow and a shift in
+background tone rather than from strokes; hairlines at low opacity as the only line; a
+12px radius used consistently; one accent colour; and semantic colour reserved for meaning.
+Numbers are set in `tabular-nums` everywhere — in a finance table, columns that line up
+matter more than any other typographic choice. Light and dark both come from the same
+custom properties following `prefers-color-scheme`, and every transition collapses to 1ms
+under `prefers-reduced-motion`.
+
+Semantic colour turned out to need real care rather than a rule about signs. The
+year-on-year headline is a negative number when spending has *fallen* in real terms, which
+is the good outcome, so it is green — while a refund, also negative, is red. Colour follows
+what the figure means, not whether it has a minus in front of it.
+
+### The demo data has to make the argument
+
+§8.3 wants a seeded year so the charts have something to show. The generator runs for
+twenty-four months rather than twelve, because the headline feature compares a month with
+the same month a year earlier and one year gives nothing to compare against. Nominal
+amounts drift upward at roughly the rate Turkish prices actually moved, so the demo shows
+nominal spending climbing 26% year on year while real spending falls 4% — which is the
+entire point of the application, and a demo with flat amounts would have shown the opposite.
+Every figure in it is invented, and the interface says so on screen.
 
 ### Enforcing the module boundary
 

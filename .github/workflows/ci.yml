@@ -37,6 +37,30 @@ jobs:
             exit 1
           fi
 
+      # SPEC §9: the frontend is typechecked, linted and built on every push.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ledger-web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ledger-web
+
+      - name: Typecheck frontend
+        run: npm run typecheck
+        working-directory: ledger-web
+
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: ledger-web
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: ledger-web
+
       - name: Publish test report
         if: always()
         uses: actions/upload-artifact@v4
