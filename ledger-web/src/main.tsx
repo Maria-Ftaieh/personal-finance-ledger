@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { LOCALE, t } from "./i18n";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -16,6 +17,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// The markup ships with Turkish defaults; both follow the resolved locale from here on,
+// which matters for screen readers and for the browser tab.
+document.documentElement.lang = LOCALE;
+document.title = t("app.title");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

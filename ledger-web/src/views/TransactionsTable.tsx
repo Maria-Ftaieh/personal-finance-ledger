@@ -3,8 +3,8 @@ import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import type { Category, Transaction } from "../api";
 import { api } from "../api";
-import { formatDate, formatMoney } from "../format";
-import { t } from "../i18n";
+import { bankLabel, formatDate, formatMoney } from "../format";
+import { categoryLabel, t } from "../i18n";
 import { Empty, ErrorState, Loading, MoneyText, Panel, Pill } from "../ui";
 
 function lastDayOf(month: string): string {
@@ -71,7 +71,7 @@ export function TransactionsTable({ month, categories }: { month: string; catego
             <option value="">{t("common.all")}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.displayName}
+                {categoryLabel(category.id, category.displayName)}
               </option>
             ))}
           </select>
@@ -144,7 +144,7 @@ function Row({
           {/* The raw description, exactly as the bank printed it (SPEC §3.3). */}
           <span>{transaction.rawDescription}</span>
           <span className="row small" style={{ gap: 6 }}>
-            <span className="tertiary">{transaction.bank}</span>
+            <span className="tertiary">{bankLabel(transaction.bank)}</span>
             {transaction.installment && (
               <Pill>
                 {t("transactions.installment")} {transaction.installment}
@@ -171,7 +171,7 @@ function Row({
           >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.displayName}
+                {categoryLabel(category.id, category.displayName)}
               </option>
             ))}
           </select>

@@ -39,6 +39,14 @@ LEDGER_WEB_PORT=3001 LEDGER_PORT=8090 LEDGER_DB_PORT=5433 docker compose up --bu
 
 The demo generator seeds invented transactions and the interface says so on screen.
 
+The interface is available in English and Turkish, switchable in the header. Compose
+builds it in English, since that suits a public demo; a self-hosted copy is more likely
+to want Turkish:
+
+```bash
+LEDGER_LOCALE=tr docker compose up --build
+```
+
 ---
 
 ## How it is put together
@@ -116,6 +124,8 @@ Two views behind a single toggle in the header, which is the only navigation the
 month last year, the top five categories, and any budget alert. Note the year-on-year
 figure — spending fell 4% in real terms, so it reads green, even though it is a negative
 number.
+
+English and Turkish are both available, and the toggle sits next to the view switch.
 
 ![The same overview in dark mode](docs/basic-dark.png)
 
@@ -379,11 +389,27 @@ arrives already computed in `BigDecimal` on the server, and amounts cross the wi
 strings precisely so they never become doubles on the way. The one place a number is parsed
 is chart geometry, where the unit is a pixel — and that function says so in a comment.
 
-Formatting goes through `Intl.NumberFormat("tr-TR", …)`, handed the decimal *string* rather
-than a parsed number: `Intl` formats a string exactly, so the value does not pass through a
-float even to be displayed. Turkish strings live in a small typed dictionary whose keys are
-derived from the default locale, so a missing translation is a compile error rather than a
+Formatting goes through `Intl.NumberFormat`, handed the decimal *string* rather than a
+parsed number: `Intl` formats a string exactly, so the value does not pass through a float
+even to be displayed. Strings live in a small typed dictionary whose keys are derived from
+the Turkish one, so a translation missing from English is a compile error rather than a
 blank label.
+
+Language is resolved once at module load — a stored choice, then the build default — and
+switching reloads the page rather than re-rendering. The locale is threaded through `Intl`
+formatters built and cached at the same time, and making it reactive would mean a context,
+a provider and cache invalidation to save one page load on something a person does
+approximately never.
+
+Currency is the exception to following the interface language: amounts stay Turkish
+whatever the prose is doing. They are lira, they came off a Turkish statement, and
+`₺30.959,43` is how they are written — the same reasoning as rounding HALF_UP, that a
+figure the reader can check against the paper in their hand beats one that matches the
+words around it. Dates and percentages do follow the language.
+
+Category names are data rather than interface strings: they are seeded in Turkish and a
+user can add their own. English display names are supplied for the ids that ship with the
+application, and anything else falls back to the name the API returns.
 
 ### Restraint is a design decision, not an absence of one
 

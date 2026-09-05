@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CopyCheck } from "lucide-react";
 import { api } from "../api";
-import { formatDate } from "../format";
+import { bankLabel, formatDate } from "../format";
 import { t } from "../i18n";
 import { Empty, ErrorState, Loading, MoneyText, Panel, Pill } from "../ui";
 
@@ -61,7 +61,7 @@ export function DuplicateQueue() {
                   <td>
                     <div className="stack" style={{ gap: 3 }}>
                       <span>{transaction.rawDescription}</span>
-                      <span className="small tertiary">{transaction.bank}</span>
+                      <span className="small tertiary">{bankLabel(transaction.bank)}</span>
                     </div>
                   </td>
                   <td>

@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Category } from "../api";
 import { api } from "../api";
 import { formatMonth, isNegative, toNumber } from "../format";
-import { t } from "../i18n";
+import { categoryLabel, t } from "../i18n";
 import { Bar, Disclosure, Empty, ErrorState, Loading, MoneyText, Panel, Pill } from "../ui";
 
 /** SPEC §8.1: the breakdown drills down from category to subcategory. */
@@ -12,16 +12,16 @@ export function CategoryBreakdown({ month, categories }: { month: string; catego
   const report = useQuery({ queryKey: ["monthly", month], queryFn: () => api.monthly(month) });
 
   const categoryName = (id: string) =>
-    categories.find((category) => category.id === id)?.displayName ?? id;
+    categoryLabel(id, categories.find((category) => category.id === id)?.displayName);
 
   const subcategoryName = (id: string) => {
     for (const category of categories) {
       const found = category.subcategories.find((sub) => sub.id === id);
       if (found) {
-        return found.displayName;
+        return categoryLabel(id, found.displayName);
       }
     }
-    return id;
+    return categoryLabel(id);
   };
 
   if (report.isLoading) {

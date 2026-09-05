@@ -88,7 +88,7 @@ export function Segmented<T extends string>({
   label,
 }: {
   value: T;
-  options: { value: T; label: string; icon?: ReactNode }[];
+  options: { value: T; label: string; icon?: ReactNode; title?: string }[];
   onChange: (value: T) => void;
   label: string;
 }) {
@@ -100,6 +100,8 @@ export function Segmented<T extends string>({
           type="button"
           className="segmented__option"
           aria-pressed={option.value === value}
+          aria-label={option.title ?? option.label}
+          title={option.title}
           onClick={() => onChange(option.value)}
         >
           <span className="row" style={{ gap: 6, flexWrap: "nowrap" }}>

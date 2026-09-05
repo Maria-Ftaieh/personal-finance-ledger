@@ -9,7 +9,7 @@ import {
   isNegative,
   toNumber,
 } from "../format";
-import { t } from "../i18n";
+import { categoryLabel, t } from "../i18n";
 import { Bar, Empty, ErrorState, Loading, MoneyText, Panel, Pill, RealFigure } from "../ui";
 
 /**
@@ -41,7 +41,7 @@ export function BasicView({ month, loading }: { month?: string; loading: boolean
   const categories = useQuery({ queryKey: ["categories"], queryFn: api.categories });
 
   const nameOf = (id: string) =>
-    categories.data?.find((category) => category.id === id)?.displayName ?? id;
+    categoryLabel(id, categories.data?.find((category) => category.id === id)?.displayName);
 
   if (loading) {
     return <Loading />;

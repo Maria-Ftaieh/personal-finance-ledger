@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Info, LayoutGrid, Table2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { t } from "./i18n";
+import { LOCALE, LOCALE_NAMES, LOCALES, setLocale, t } from "./i18n";
 import { Segmented } from "./ui";
 import { BasicView } from "./views/BasicView";
 import { DetailedView } from "./views/DetailedView";
@@ -49,15 +49,32 @@ export default function App() {
             <span className="small muted">{t("app.subtitle")}</span>
           </div>
         </div>
-        <Segmented
-          label={t("view.switch")}
-          value={view}
-          onChange={setView}
-          options={[
-            { value: "basic", label: t("view.basic"), icon: <LayoutGrid size={14} aria-hidden /> },
-            { value: "detailed", label: t("view.detailed"), icon: <Table2 size={14} aria-hidden /> },
-          ]}
-        />
+        <div className="row" style={{ gap: "var(--space-3)" }}>
+          {/*
+            The interface language. The build picks the default — English on the deployed
+            demo, Turkish for a self-hosted copy — and a reader's own choice overrides it
+            and is remembered.
+          */}
+          <Segmented
+            label={t("language.switch")}
+            value={LOCALE}
+            onChange={setLocale}
+            options={LOCALES.map((locale) => ({
+              value: locale,
+              label: locale.toUpperCase(),
+              title: LOCALE_NAMES[locale],
+            }))}
+          />
+          <Segmented
+            label={t("view.switch")}
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "basic", label: t("view.basic"), icon: <LayoutGrid size={14} aria-hidden /> },
+              { value: "detailed", label: t("view.detailed"), icon: <Table2 size={14} aria-hidden /> },
+            ]}
+          />
+        </div>
       </header>
 
       {/* SPEC §8.3: say plainly, on screen, that the data is fictional. */}

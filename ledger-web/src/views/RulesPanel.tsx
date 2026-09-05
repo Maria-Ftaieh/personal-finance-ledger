@@ -3,7 +3,7 @@ import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Category, MatchType } from "../api";
 import { api, ApiFailure } from "../api";
-import { t } from "../i18n";
+import { categoryLabel, t } from "../i18n";
 import { Empty, ErrorState, Loading, Panel, Pill } from "../ui";
 
 const MATCH_TYPES: MatchType[] = ["CONTAINS", "STARTS_WITH", "EXACT", "REGEX"];
@@ -62,7 +62,8 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
     },
   });
 
-  const nameOf = (id: string) => categories.find((category) => category.id === id)?.displayName ?? id;
+  const nameOf = (id: string) =>
+    categoryLabel(id, categories.find((category) => category.id === id)?.displayName);
   const list = rules.data ?? [];
 
   return (
@@ -156,7 +157,7 @@ export function RulesPanel({ categories }: { categories: Category[] }) {
             <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.displayName}
+                  {categoryLabel(category.id, category.displayName)}
                 </option>
               ))}
             </select>

@@ -16,6 +16,7 @@ const tr = {
   "view.basic": "Genel",
   "view.detailed": "Ayrıntılı",
   "view.switch": "Görünüm",
+  "language.switch": "Dil",
 
   "demo.banner":
     "Bu bir tanıtım kopyasıdır. Görünen tüm işlemler kurgusaldır; gerçek finansal veri değildir.",
@@ -122,6 +123,7 @@ const en: Record<TranslationKey, string> = {
   "view.basic": "Basic",
   "view.detailed": "Detailed",
   "view.switch": "View",
+  "language.switch": "Language",
 
   "demo.banner":
     "This is a demonstration copy. Every transaction shown is fictional and is not real financial data.",
@@ -223,11 +225,67 @@ const dictionaries = { tr, en } as const;
 
 export type Locale = keyof typeof dictionaries;
 
-export const LOCALE: Locale =
-  (import.meta.env.VITE_LOCALE as Locale | undefined) ?? "tr";
+export const LOCALES = Object.keys(dictionaries) as Locale[];
 
-/** The locale used for every `Intl` call, so formatting and wording never disagree. */
+export const LOCALE_NAMES: Record<Locale, string> = { tr: "Türkçe", en: "English" };
+
+const STORAGE_KEY = "ledger.locale";
+
+function isLocale(value: string | null | undefined): value is Locale {
+  return value === "tr" || value === "en";
+}
+
+/**
+ * Resolved once, at module load.
+ *
+ * A reader's own choice wins; otherwise the build decides. The deployed demo is built
+ * with `VITE_LOCALE=en` because most of the people who open it do not read Turkish,
+ * while a self-hosted build defaults to Turkish, which is the language of the statements
+ * and of whoever is actually tracking their own spending.
+ */
+export const LOCALE: Locale = resolveLocale();
+
+function resolveLocale(): Locale {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (isLocale(stored)) {
+      return stored;
+    }
+  } catch {
+    // Private browsing, or storage disabled. Fall through to the build default.
+  }
+  const configured = import.meta.env.VITE_LOCALE;
+  return isLocale(configured) ? configured : "tr";
+}
+
+/**
+ * Switches language and reloads.
+ *
+ * A reload rather than a re-render: the locale is read once at module load and threaded
+ * through `Intl` formatters that are built and cached at the same time. Making it
+ * reactive would mean a context, a provider and invalidating those caches, to save a
+ * page load on something a person does approximately never.
+ */
+export function setLocale(locale: Locale): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, locale);
+  } catch {
+    // Nothing to do: without storage the choice cannot outlive the reload.
+  }
+  window.location.reload();
+}
+
+/** Dates, percentages and axis labels follow the language being read. */
 export const INTL_LOCALE = LOCALE === "tr" ? "tr-TR" : "en-GB";
+
+/**
+ * Money is always formatted Turkish, whatever the interface language.
+ *
+ * The amounts are lira and they came off a Turkish statement, so `₺30.959,43` is how
+ * they are written — the same reason `Money` rounds HALF_UP: a figure the user can check
+ * against the paper in their hand beats one that matches the prose around it.
+ */
+export const CURRENCY_LOCALE = "tr-TR";
 
 /** Looks up a string and substitutes `{name}` placeholders. */
 export function t(key: TranslationKey, params?: Record<string, string | number>): string {
@@ -238,4 +296,77 @@ export function t(key: TranslationKey, params?: Record<string, string | number>)
   return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
     name in params ? String(params[name]) : whole,
   );
+}
+
+/**
+ * English names for the seeded categories.
+ *
+ * Category names live in the database, seeded in Turkish, and a user can add their own —
+ * so they are data rather than interface strings and cannot simply be dictionary keys.
+ * These are display overrides for the ids that ship with the application; anything not
+ * listed falls back to the name the API gives, which is what a user-created category
+ * should show in either language.
+ */
+const CATEGORY_LABELS_EN: Record<string, string> = {
+  yemek: "Food",
+  ulasim: "Transport",
+  dijital: "Digital",
+  eglence: "Entertainment",
+  giyim: "Clothing",
+  saglik: "Health",
+  konut: "Home",
+  egitim: "Education",
+  seyahat: "Travel",
+  finansal: "Financial",
+  diger: "Other",
+
+  "yemek.kahve": "Coffee",
+  "yemek.fast_food": "Fast food",
+  "yemek.restoran": "Restaurant",
+  "yemek.market": "Groceries",
+  "ulasim.akaryakit": "Fuel",
+  "ulasim.toplu_tasima": "Public transport",
+  "ulasim.taksi": "Taxi",
+  "ulasim.otopark": "Parking",
+  "dijital.abonelik": "Subscriptions",
+  "dijital.uygulama": "Apps",
+  "dijital.oyun": "Games",
+  "dijital.bulut": "Cloud",
+  "eglence.sinema": "Cinema",
+  "eglence.etkinlik": "Events",
+  "eglence.kitap": "Books",
+  "giyim.giyim": "Clothing",
+  "giyim.ayakkabi": "Shoes",
+  "giyim.aksesuar": "Accessories",
+  "saglik.eczane": "Pharmacy",
+  "saglik.doktor": "Doctor",
+  "saglik.spor": "Fitness",
+  "konut.kira": "Rent",
+  "konut.faturalar": "Bills",
+  "konut.ev_esyasi": "Household",
+  "egitim.kurs": "Courses",
+  "egitim.kitap": "Books",
+  "egitim.yazilim": "Software",
+  "seyahat.ucak": "Flights",
+  "seyahat.konaklama": "Accommodation",
+  "finansal.kart_ucreti": "Card fee",
+  "finansal.faiz": "Interest",
+  "finansal.komisyon": "Commission",
+  "diger.siniflandirilmamis": "Uncategorised",
+};
+
+/**
+ * The name to show for a category or subcategory.
+ *
+ * @param fallback the `displayName` the API returned, used for anything this does not
+ *     translate — which is every category the user made themselves
+ */
+export function categoryLabel(id: string | undefined, fallback?: string): string {
+  if (!id) {
+    return fallback ?? "";
+  }
+  if (LOCALE === "en") {
+    return CATEGORY_LABELS_EN[id] ?? fallback ?? id;
+  }
+  return fallback ?? id;
 }

@@ -46,6 +46,10 @@ services:
     build:
       context: .
       dockerfile: ledger-web/Dockerfile
+      args:
+        # Interface language of the built bundle: en (default here) or tr.
+        VITE_LOCALE: ${LEDGER_LOCALE:-en}
+        VITE_DEMO_MODE: ${LEDGER_DEMO_MODE:-true}
     depends_on:
       - app
     ports:

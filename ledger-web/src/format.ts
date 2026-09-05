@@ -1,8 +1,11 @@
 import type { Money } from "./api";
-import { INTL_LOCALE } from "./i18n";
+import { CURRENCY_LOCALE, INTL_LOCALE } from "./i18n";
 
 /*
- * SPEC §8.2: currency through `Intl.NumberFormat`, never a hand-rolled thousands separator.
+ * All formatting goes through `Intl`; nothing here hand-rolls a thousands separator.
+ *
+ * Currency is pinned to Turkish regardless of the interface language — see CURRENCY_LOCALE
+ * in i18n.ts — while dates, percentages and axis labels follow the language being read.
  */
 
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
@@ -10,7 +13,7 @@ const currencyFormatters = new Map<string, Intl.NumberFormat>();
 function currencyFormatter(currency: string): Intl.NumberFormat {
   let formatter = currencyFormatters.get(currency);
   if (!formatter) {
-    formatter = new Intl.NumberFormat(INTL_LOCALE, { style: "currency", currency });
+    formatter = new Intl.NumberFormat(CURRENCY_LOCALE, { style: "currency", currency });
     currencyFormatters.set(currency, formatter);
   }
   return formatter;
@@ -98,4 +101,19 @@ function monthToDate(yearMonth: string): Date {
 export function previousYear(yearMonth: string): string {
   const [year, month] = yearMonth.split("-");
   return `${Number(year) - 1}-${month}`;
+}
+
+/**
+ * The API reports the bank as an enum constant. `GARANTI_BBVA` is not a word in either
+ * language, so it gets a label. Bank names are proper nouns and do not translate; only the
+ * CSV fallback needs one.
+ */
+const BANK_LABELS: Record<string, string> = {
+  GARANTI_BBVA: "Garanti BBVA",
+  YAPI_KREDI: "Yapı Kredi",
+  GENERIC_CSV: "CSV",
+};
+
+export function bankLabel(bank: string): string {
+  return BANK_LABELS[bank] ?? bank;
 }
